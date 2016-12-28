@@ -40,6 +40,14 @@
 
 // key values
 #define SMC_KEY_CPU_TEMP      "TC0P"
+#define SMC_KEY_GPU_TEMP      "TG0P"
+#define SMC_KEY_BATTERY_TEMP  "TB0T"
+
+#define SMC_KEY_LEFT_FAN_RPM   "F0Ac" // left fan
+#define SMC_KEY_RIGHT_FAN_RPM  "F1Ac" // right fan
+
+#define SMC_KEY_FAN_SPEED     "F%dAc"
+#define SMC_KEY_FAN_NUM       "FNum"
 
 
 typedef struct {

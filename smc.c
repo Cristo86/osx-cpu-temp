@@ -17,6 +17,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+/*
+
+https://github.com/lavoiesl/osx-cpu-temp/blob/master/smc.h
+https://github.com/lavoiesl/osx-cpu-temp/blob/master/smc.c
+https://github.com/Chris911/iStats/tree/master/ext/osx_stats
+https://github.com/Chris911/iStats/blob/master/ext/osx_stats/smc.h
+https://github.com/Chris911/iStats/blob/master/ext/osx_stats/smc.c
+https://github.com/JJN27/EFan-Control/blob/master/smc.h
+
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <IOKit/IOKitLib.h>
@@ -48,6 +59,24 @@ void _ultostr(char *str, UInt32 val)
             (unsigned int) val >> 16,
             (unsigned int) val >> 8,
             (unsigned int) val);
+}
+
+float _strtof(unsigned char *str, int size, int e)
+{
+    float total = 0;
+    int i;
+
+    for (i = 0; i < size; i++)
+    {
+        if (i == (size - 1))
+            total += (str[i] & 0xff) >> e;
+        else
+            total += str[i] << (size - 1 - i) * (8 - e);
+    }
+
+    total += (str[size-1] & 0x03) * 0.25;
+
+    return total;
 }
 
 kern_return_t SMCOpen(void)
@@ -168,6 +197,27 @@ double convertToFahrenheit(double celsius) {
   return (celsius * (9.0 / 5.0)) + 32.0;
 }
 
+int SMCGetFanNumber(char *key)
+{
+    SMCVal_t val;
+    kern_return_t result;
+
+    result = SMCReadKey(key, &val);
+    return _strtoul((char *)val.bytes, val.dataSize, 10);
+}
+
+float SMCGetFanSpeed(int fanNum)
+{
+    SMCVal_t val;
+    kern_return_t result;
+
+    UInt32Char_t  key;
+    sprintf(key, SMC_KEY_FAN_SPEED, fanNum);
+    result = SMCReadKey(key, &val);
+    return _strtof(val.bytes, val.dataSize, 2);
+}
+
+
 int main(int argc, char *argv[])
 {
     char scale = 'C';
@@ -184,13 +234,33 @@ int main(int argc, char *argv[])
 
     SMCOpen();
     double temperature = SMCGetTemperature(SMC_KEY_CPU_TEMP);
-    SMCClose();
+//    SMCClose();
 
     if (scale == 'F') {
       temperature = convertToFahrenheit(temperature);
     }
 
-    printf("%0.1f°%c\n", temperature, scale);
+    printf("CPU %0.1f°%c\n", temperature, scale);
 
+    //SMCOpen();
+    temperature = SMCGetTemperature(SMC_KEY_GPU_TEMP);
+    //SMCClose();
+
+    if (scale == 'F') {
+      temperature = convertToFahrenheit(temperature);
+    }
+
+    printf("GPU %0.1f°%c\n", temperature, scale);
+
+    temperature = SMCGetTemperature(SMC_KEY_BATTERY_TEMP);
+    printf("BAT %0.1f°%c\n", temperature, scale);
+
+    //SMCOpen();
+    int i = 0, fans = SMCGetFanNumber(SMC_KEY_FAN_NUM);
+    printf("FAN_NUM\t%i\n", fans);
+    for (i = 0; i < fans; i++)
+        printf ("FAN_%i\t%0.1f\tRPM\n", i, SMCGetFanSpeed(i));
+
+    SMCClose(); 
     return 0;
 }
